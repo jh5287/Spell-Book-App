@@ -1,14 +1,16 @@
 .container { max-width: 64rem; margin: 0 auto; padding: 1rem; }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.5rem 0 1rem; }
+.header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; margin: 0.5rem 0 1rem; }
 .title { font-size: 1.75rem; margin: 0; }
-.modeButton {
-  position: relative; display: grid; place-items: center; width: 3rem; height: 3rem; padding: 0;
-  border: 2px solid #8a6d3b; border-radius: 50%; background: #fffdf6; color: #5c4721; cursor: pointer;
+.nav { display: flex; gap: 0.5rem; }
+.tab {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.85rem; font: inherit;
+  border: 2px solid #8a6d3b; border-radius: 999px; background: #fffdf6; color: #5c4721; cursor: pointer;
 }
-.modeButton:hover { background: #f3e7c4; }
-.modeButton:focus-visible { outline: 2px solid #2b6cb0; outline-offset: 2px; }
+.tab svg { width: 1.2rem; height: 1.2rem; }
+.tab:hover { background: #f3e7c4; }
+.tab[aria-current="page"] { background: #8a6d3b; color: #fff; }
+.tab:focus-visible { outline: 2px solid #2b6cb0; outline-offset: 2px; }
 .badge {
-  position: absolute; top: -0.35rem; right: -0.35rem; min-width: 1.3rem; height: 1.3rem; padding: 0 0.3rem;
-  border-radius: 999px; background: #8b2e2e; color: #fff; font-size: 0.75rem; font-weight: bold;
-  line-height: 1.3rem; text-align: center;
+  min-width: 1.3rem; height: 1.3rem; padding: 0 0.3rem; border-radius: 999px;
+  background: #8b2e2e; color: #fff; font-size: 0.75rem; font-weight: bold; line-height: 1.3rem; text-align: center;
 }
