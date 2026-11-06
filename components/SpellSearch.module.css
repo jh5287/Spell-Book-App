@@ -1,0 +1,17 @@
+.container { max-width: 42rem; margin: 0 auto; padding: 1rem; }
+.title { font-size: 1.75rem; margin: 0.5rem 0 1rem; }
+.input {
+  width: 100%; padding: 0.85rem 1rem; font-size: 1.1rem; /* >=16px avoids iOS zoom */
+  border: 2px solid #8a6d3b; border-radius: 8px; background: #fffdf6; color: #222;
+}
+.message { margin-top: 1rem; color: #8b2e2e; }
+.card {
+  margin-top: 1rem; padding: 1rem; border: 1px solid #c9b78a; border-radius: 8px;
+  background: #fbf5e3; color: #222; overflow-wrap: anywhere;
+}
+.card h2 { margin: 0; }
+.sub { font-style: italic; margin: 0.25rem 0 1rem; }
+.stats { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0 0 1rem; }
+.stats dt { font-weight: bold; }
+.stats dd { margin: 0; }
+@media (max-width: 480px) { .stats { grid-template-columns: 1fr; } .stats dd { margin-bottom: 0.5rem; } }
