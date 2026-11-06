@@ -28,6 +28,14 @@ export function SearchIcon() {
   );
 }
 
+export function PlusIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
 export function GripIcon() {
   return (
     <svg {...base} width={18} height={18} fill="currentColor" stroke="none">

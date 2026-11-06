@@ -1,47 +1,69 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useLocalStore } from "@/lib/localStore";
-import { addToBook, removeFromBook, reorderWithinLevel, spellBook } from "@/lib/spellbook";
+import { addToBook, removeFromBook, reorderWithinGroup, spellBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
-import { BookIcon, SearchIcon } from "./icons";
+import CustomSpellForm from "./CustomSpellForm";
+import { BookIcon, PlusIcon, SearchIcon } from "./icons";
 import SpellBook from "./SpellBook";
 import SpellSearch from "./SpellSearch";
 import styles from "./SpellApp.module.css";
 
-type Mode = "search" | "book";
+type Mode = "search" | "create" | "book";
+
+const TITLES: Record<Mode, string> = {
+  search: "Spell Lookup",
+  create: "Create Your Own",
+  book: "Spell Book",
+};
 
 export default function SpellApp() {
   const [mode, setMode] = useState<Mode>("search");
   const [saved, setSaved] = useLocalStore(spellBook);
   const savedIds = useMemo(() => new Set(saved.map((s) => s.index)), [saved]);
 
-  const inSearch = mode === "search";
+  const addSpell = (s: Spell) => setSaved((prev) => addToBook(prev, s));
+
+  const tabs: { mode: Mode; label: string; icon: ReactNode; badge?: number }[] = [
+    { mode: "search", label: "Search", icon: <SearchIcon /> },
+    { mode: "create", label: "Create", icon: <PlusIcon /> },
+    { mode: "book", label: "Book", icon: <BookIcon />, badge: saved.length },
+  ];
 
   return (
     <main className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>{inSearch ? "Spell Lookup" : "Spell Book"}</h1>
-        <button
-          className={styles.modeButton}
-          onClick={() => setMode(inSearch ? "book" : "search")}
-          aria-label={inSearch ? `Open spell book (${saved.length} saved)` : "Back to spell search"}
-          title={inSearch ? "Open spell book" : "Back to spell search"}
-        >
-          {inSearch ? <BookIcon /> : <SearchIcon />}
-          {inSearch && saved.length > 0 && <span className={styles.badge}>{saved.length}</span>}
-        </button>
+        <h1 className={styles.title}>{TITLES[mode]}</h1>
+        <nav className={styles.nav} aria-label="Sections">
+          {tabs.map((t) => (
+            <button
+              key={t.mode}
+              className={styles.tab}
+              aria-current={mode === t.mode ? "page" : undefined}
+              aria-label={t.badge ? `${t.label} (${t.badge} saved)` : t.label}
+              onClick={() => setMode(t.mode)}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+              {!!t.badge && <span className={styles.badge} aria-hidden="true">{t.badge}</span>}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {/* stays mounted while the book is open so the query and spell list aren't lost */}
-      <div hidden={!inSearch}>
-        <SpellSearch savedIds={savedIds} onAdd={(s: Spell) => setSaved((prev) => addToBook(prev, s))} />
+      {/* search and create stay mounted while hidden so typed text and the spell list aren't lost */}
+      <div hidden={mode !== "search"}>
+        <SpellSearch savedIds={savedIds} onAdd={addSpell} />
       </div>
-      {!inSearch && (
+      <div hidden={mode !== "create"}>
+        <CustomSpellForm saved={saved} onAdd={addSpell} />
+      </div>
+      {mode === "book" && (
         <SpellBook
           spells={saved}
-          onReorder={(level, activeId, overId) =>
-            setSaved((prev) => reorderWithinLevel(prev, level, activeId, overId))
+          onReorder={(key, activeId, overId) =>
+            setSaved((prev) => reorderWithinGroup(prev, key, activeId, overId))
           }
           onRemove={(index) => setSaved((prev) => removeFromBook(prev, index))}
         />

@@ -19,7 +19,8 @@ function isSpell(v: unknown): v is Spell {
     typeof s.school?.name === "string" &&
     typeof s.description === "string" &&
     Array.isArray(s.components) &&
-    Array.isArray(s.classes)
+    Array.isArray(s.classes) &&
+    (s.kind === undefined || typeof s.kind === "string")
   );
 }
 
@@ -44,14 +45,14 @@ export function removeFromBook(spells: Spell[], index: string): Spell[] {
   return spells.filter((s) => s.index !== index);
 }
 
-/** Moves `activeId` to where `overId` is, shuffling only the spells of that level. */
-export function reorderWithinLevel(
+/** Moves `activeId` to where `overId` is, shuffling only the spells in that group. */
+export function reorderWithinGroup(
   spells: Spell[],
-  level: number,
+  key: string,
   activeId: string,
   overId: string,
 ): Spell[] {
-  const slots = spells.flatMap((s, i) => (s.level === level ? [i] : []));
+  const slots = spells.flatMap((s, i) => (groupKey(s) === key ? [i] : []));
   const group = slots.map((i) => spells[i]);
   const from = group.findIndex((s) => s.index === activeId);
   const to = group.findIndex((s) => s.index === overId);
@@ -66,20 +67,31 @@ export function reorderWithinLevel(
   return next;
 }
 
-export interface LevelGroup {
-  level: number;
+export interface SpellGroup {
+  key: string;
+  heading: string;
   spells: Spell[];
 }
 
-/** Cantrips first, then level 1, 2, … keeping each spell's saved order within its level. */
-export function groupByLevel(spells: Spell[]): LevelGroup[] {
-  const groups = new Map<number, Spell[]>();
+/** Spells share a group by level; custom non-spell entries share one by their kind. */
+export function groupKey(spell: Spell): string {
+  return spell.kind ? `kind:${spell.kind.toLowerCase()}` : `level:${spell.level}`;
+}
+
+/** Cantrips first, then level 1, 2, …, then other kinds A–Z; saved order is kept within a group. */
+export function groupSpells(spells: Spell[]): SpellGroup[] {
+  const groups = new Map<string, SpellGroup>();
   for (const spell of spells) {
-    groups.set(spell.level, [...(groups.get(spell.level) ?? []), spell]);
+    const key = groupKey(spell);
+    const group = groups.get(key) ?? { key, heading: spell.kind ?? levelHeading(spell.level), spells: [] };
+    group.spells.push(spell);
+    groups.set(key, group);
   }
-  return [...groups]
-    .sort(([a], [b]) => a - b)
-    .map(([level, list]) => ({ level, spells: list }));
+  const isLevel = (g: SpellGroup) => g.key.startsWith("level:");
+  return [...groups.values()].sort((a, b) => {
+    if (isLevel(a) !== isLevel(b)) return isLevel(a) ? -1 : 1;
+    return isLevel(a) ? a.spells[0].level - b.spells[0].level : a.heading.localeCompare(b.heading);
+  });
 }
 
 export function levelHeading(level: number): string {

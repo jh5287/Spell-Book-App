@@ -22,6 +22,10 @@ export interface Spell {
   description: string;
   higher_level?: string;
   classes: { name: string }[];
+  /** Created by the user rather than fetched from the API. */
+  custom?: boolean;
+  /** Set on custom entries that aren't spells (e.g. "Ability", "Item"); `level` is meaningless then. */
+  kind?: string;
 }
 
 export async function fetchSpellList(signal?: AbortSignal): Promise<SpellSummary[]> {
@@ -88,7 +92,13 @@ export function ordinal(n: number): string {
 }
 
 export function levelLabel(spell: Spell): string {
+  if (spell.kind) return spell.kind;
   const school = spell.school.name;
-  if (spell.level === 0) return `${school} cantrip`;
-  return `${ordinal(spell.level)}-level ${school.toLowerCase()}`;
+  if (spell.level === 0) return school ? `${school} cantrip` : "Cantrip";
+  return school ? `${ordinal(spell.level)}-level ${school.toLowerCase()}` : `${ordinal(spell.level)}-level spell`;
+}
+
+/** e.g. "3rd-level evocation · Sorcerer, Wizard"; custom entries may have no classes. */
+export function subtitle(spell: Spell): string {
+  return [levelLabel(spell), spell.classes.map((c) => c.name).join(", ")].filter(Boolean).join(" · ");
 }

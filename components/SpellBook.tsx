@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { BOOK_VIEWS, bookView, groupByLevel, levelHeading, type BookView } from "@/lib/spellbook";
+import { BOOK_VIEWS, bookView, groupSpells, type BookView } from "@/lib/spellbook";
 import { useLocalStore } from "@/lib/localStore";
 import type { Spell } from "@/lib/spells";
 import { GripIcon } from "./icons";
@@ -27,7 +27,7 @@ import styles from "./SpellBook.module.css";
 
 interface Props {
   spells: Spell[];
-  onReorder: (level: number, activeId: string, overId: string) => void;
+  onReorder: (groupKey: string, activeId: string, overId: string) => void;
   onRemove: (index: string) => void;
 }
 
@@ -93,8 +93,8 @@ export default function SpellBook({ spells, onReorder, onRemove }: Props) {
     return <p className={styles.empty}>Your spell book is empty. Search for a spell and add it to see it here.</p>;
   }
 
-  function handleDragEnd(level: number, { active, over }: DragEndEvent) {
-    if (over && active.id !== over.id) onReorder(level, String(active.id), String(over.id));
+  function handleDragEnd(groupKey: string, { active, over }: DragEndEvent) {
+    if (over && active.id !== over.id) onReorder(groupKey, String(active.id), String(over.id));
   }
 
   return (
@@ -120,21 +120,21 @@ export default function SpellBook({ spells, onReorder, onRemove }: Props) {
       </div>
       {arranging && (
         <p className={styles.hint}>
-          Drag a spell by its grip handle to reorder it within its level. With the keyboard, focus the
+          Drag a card by its grip handle to reorder it within its section. With the keyboard, focus the
           handle, press Space, use the arrow keys, then Space again to drop.
         </p>
       )}
 
-      {groupByLevel(spells).map(({ level, spells: group }) => (
-        <section key={level} className={styles.level}>
+      {groupSpells(spells).map(({ key, heading, spells: group }) => (
+        <section key={key} className={styles.level}>
           <h2 className={styles.levelHeading}>
-            {levelHeading(level)} <span className={styles.count}>({group.length})</span>
+            {heading} <span className={styles.count}>({group.length})</span>
           </h2>
           <DndContext
-            id={`level-${level}`}
+            id={`group-${key}`}
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragEnd={(e) => handleDragEnd(level, e)}
+            onDragEnd={(e) => handleDragEnd(key, e)}
           >
             <SortableContext
               items={group.map((s) => s.index)}

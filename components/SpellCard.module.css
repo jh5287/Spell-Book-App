@@ -10,6 +10,7 @@
 .stats { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0 0 1rem; }
 .stats dt { font-weight: bold; }
 .stats dd { margin: 0; }
+.stat { display: contents; }
 @media (max-width: 480px) { .stats { grid-template-columns: 1fr; } .stats dd { margin-bottom: 0.5rem; } }
 
 /* compact + list variants: a collapsed row that expands in place */

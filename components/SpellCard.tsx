@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { BookView } from "@/lib/spellbook";
-import { levelLabel, type Spell } from "@/lib/spells";
+import { subtitle, type Spell } from "@/lib/spells";
 import styles from "./SpellCard.module.css";
 
 interface Props {
@@ -13,17 +13,29 @@ interface Props {
   actions?: ReactNode;
 }
 
+/** Custom entries can leave fields blank, so only rows that have a value are shown. */
 function Details({ spell }: { spell: Spell }) {
+  const components = spell.components.join(", ") + (spell.material ? ` (${spell.material})` : "");
+  const rows: [string, string][] = [
+    ["Casting Time", [spell.casting_time, spell.ritual && "(ritual)"].filter(Boolean).join(" ")],
+    ["Range", spell.range],
+    ["Components", components],
+    ["Duration", [spell.concentration && "Concentration", spell.duration].filter(Boolean).join(", ")],
+  ];
+  const shownRows = rows.filter(([, value]) => value.trim());
+
   return (
     <>
-      <dl className={styles.stats}>
-        <dt>Casting Time</dt><dd>{spell.casting_time}{spell.ritual ? " (ritual)" : ""}</dd>
-        <dt>Range</dt><dd>{spell.range}</dd>
-        <dt>Components</dt>
-        <dd>{spell.components.join(", ")}{spell.material ? ` (${spell.material})` : ""}</dd>
-        <dt>Duration</dt>
-        <dd>{spell.concentration ? "Concentration, " : ""}{spell.duration}</dd>
-      </dl>
+      {shownRows.length > 0 && (
+        <dl className={styles.stats}>
+          {shownRows.map(([label, value]) => (
+            <div key={label} className={styles.stat}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {spell.description.split("\n").map((p, i) => <p key={i}>{p.trim()}</p>)}
       {spell.higher_level && (
         <p><strong>Using a Higher-Level Spell Slot.</strong> {spell.higher_level}</p>
@@ -32,11 +44,12 @@ function Details({ spell }: { spell: Spell }) {
   );
 }
 
-function Tags({ spell }: { spell: Spell }) {
+function Tags({ spell, flags }: { spell: Spell; flags?: boolean }) {
   return (
     <>
-      {spell.concentration && <span className={styles.tag} title="Concentration">C</span>}
-      {spell.ritual && <span className={styles.tag} title="Ritual">R</span>}
+      {flags && spell.concentration && <span className={styles.tag} title="Concentration">C</span>}
+      {flags && spell.ritual && <span className={styles.tag} title="Ritual">R</span>}
+      {spell.custom && <span className={styles.tag} title="Created by you">Custom</span>}
     </>
   );
 }
@@ -50,10 +63,8 @@ export default function SpellCard({ spell, variant = "full", headingLevel = 2, h
         <header className={styles.header}>
           {handle}
           <div className={styles.titleBlock}>
-            <Heading className={styles.name}>{spell.name}</Heading>
-            <p className={styles.sub}>
-              {levelLabel(spell)} · {spell.classes.map((c) => c.name).join(", ")}
-            </p>
+            <Heading className={styles.name}>{spell.name} <Tags spell={spell} /></Heading>
+            <p className={styles.sub}>{subtitle(spell)}</p>
           </div>
           {actions && <div className={styles.actions}>{actions}</div>}
         </header>
@@ -62,27 +73,27 @@ export default function SpellCard({ spell, variant = "full", headingLevel = 2, h
     );
   }
 
+  const meta = [spell.kind ?? spell.school.name, spell.casting_time, spell.range].filter(Boolean).join(" · ");
+
   return (
     <article className={`${styles.card} ${styles.row}`}>
       {handle}
       <details className={styles.details}>
         <summary className={`${styles.summary} ${variant === "list" ? styles.listSummary : ""}`}>
-          <Heading className={styles.rowName}>{spell.name} <Tags spell={spell} /></Heading>
+          <Heading className={styles.rowName}>{spell.name} <Tags spell={spell} flags /></Heading>
           {variant === "list" ? (
             <>
-              <span className={styles.col}>{spell.school.name}</span>
+              <span className={styles.col}>{spell.kind ?? spell.school.name}</span>
               <span className={styles.col}>{spell.casting_time}</span>
               <span className={styles.col}>{spell.range}</span>
               <span className={styles.col}>{spell.duration}</span>
             </>
           ) : (
-            <span className={styles.meta}>
-              {spell.school.name} · {spell.casting_time} · {spell.range}
-            </span>
+            meta && <span className={styles.meta}>{meta}</span>
           )}
         </summary>
         <div className={styles.expanded}>
-          <p className={styles.sub}>{spell.classes.map((c) => c.name).join(", ")}</p>
+          <p className={styles.sub}>{subtitle(spell)}</p>
           <Details spell={spell} />
         </div>
       </details>
