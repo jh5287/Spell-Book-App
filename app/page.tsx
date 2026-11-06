@@ -1,5 +1,5 @@
-import SpellSearch from "@/components/SpellSearch";
+import SpellApp from "@/components/SpellApp";
 
 export default function Home() {
-  return <SpellSearch />;
+  return <SpellApp />;
 }

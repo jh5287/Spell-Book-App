@@ -19,13 +19,13 @@ export interface Spell {
   duration: string;
   concentration: boolean;
   ritual: boolean;
-  desc: string[];
-  higher_level?: string[];
+  description: string;
+  higher_level?: string;
   classes: { name: string }[];
 }
 
 export async function fetchSpellList(signal?: AbortSignal): Promise<SpellSummary[]> {
-  const res = await fetch(`${API}/api/2014/spells`, { signal });
+  const res = await fetch(`${API}/api/2024/spells`, { signal });
   if (!res.ok) throw new Error("Could not load the spell list");
   const data = await res.json();
   return data.results;
@@ -82,9 +82,13 @@ export function findClosestSpell(query: string, spells: SpellSummary[]): SpellSu
   return best;
 }
 
+export function ordinal(n: number): string {
+  const suffix = ["th", "st", "nd", "rd"][n] ?? "th";
+  return `${n}${suffix}`;
+}
+
 export function levelLabel(spell: Spell): string {
   const school = spell.school.name;
   if (spell.level === 0) return `${school} cantrip`;
-  const suffix = ["th", "st", "nd", "rd"][spell.level] ?? "th";
-  return `${spell.level}${suffix}-level ${school.toLowerCase()}`;
+  return `${ordinal(spell.level)}-level ${school.toLowerCase()}`;
 }

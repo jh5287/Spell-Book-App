@@ -1,21 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchSpell,
   fetchSpellList,
   findClosestSpell,
-  levelLabel,
   type Spell,
   type SpellSummary,
 } from "@/lib/spells";
+import SpellCard from "./SpellCard";
 import styles from "./SpellSearch.module.css";
 
-export default function SpellSearch() {
+interface Props {
+  savedIds: ReadonlySet<string>;
+  onAdd: (spell: Spell) => void;
+}
+
+export default function SpellSearch({ savedIds, onAdd }: Props) {
   const [spells, setSpells] = useState<SpellSummary[]>([]);
   const [query, setQuery] = useState("");
   const [spell, setSpell] = useState<Spell | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [added, setAdded] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,15 +54,25 @@ export default function SpellSearch() {
   const shown = query.trim() && matchUrl ? spell : null;
   const noMatch = query.trim() && spells.length > 0 && !match;
 
+  function handleAdd(s: Spell) {
+    onAdd(s);
+    setAdded(s.name);
+    // keep the text selected so the next keystroke starts a new lookup
+    inputRef.current?.select();
+  }
+
   return (
-    <main className={styles.container}>
-      <h1 className={styles.title}>Spell Lookup</h1>
+    <section className={styles.container}>
       <input
+        ref={inputRef}
         className={styles.input}
         type="search"
         placeholder="Start typing a spell name…"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setAdded(null);
+        }}
         autoFocus
         autoComplete="off"
         autoCorrect="off"
@@ -63,28 +80,21 @@ export default function SpellSearch() {
         spellCheck={false}
         aria-label="Spell name"
       />
+      <p role="status" className={styles.status}>{added && `Added ${added} to your book.`}</p>
       {error && <p role="alert" className={styles.message}>{error}</p>}
       {noMatch && <p className={styles.message}>No spell found.</p>}
       {shown && shown.index === match?.index && (
-        <article className={styles.card}>
-          <h2>{shown.name}</h2>
-          <p className={styles.sub}>
-            {levelLabel(shown)} · {shown.classes.map((c) => c.name).join(", ")}
-          </p>
-          <dl className={styles.stats}>
-            <dt>Casting Time</dt><dd>{shown.casting_time}{shown.ritual ? " (ritual)" : ""}</dd>
-            <dt>Range</dt><dd>{shown.range}</dd>
-            <dt>Components</dt>
-            <dd>{shown.components.join(", ")}{shown.material ? ` (${shown.material})` : ""}</dd>
-            <dt>Duration</dt>
-            <dd>{shown.concentration ? "Concentration, " : ""}{shown.duration}</dd>
-          </dl>
-          {shown.desc.map((p, i) => <p key={i}>{p}</p>)}
-          {shown.higher_level?.map((p, i) => (
-            <p key={`h${i}`}><strong>At Higher Levels.</strong> {p}</p>
-          ))}
-        </article>
+        <SpellCard
+          spell={shown}
+          actions={
+            savedIds.has(shown.index) ? (
+              <button className="btn" disabled>✓ In your book</button>
+            ) : (
+              <button className="btn btn-primary" onClick={() => handleAdd(shown)}>Add to book</button>
+            )
+          }
+        />
       )}
-    </main>
+    </section>
   );
 }

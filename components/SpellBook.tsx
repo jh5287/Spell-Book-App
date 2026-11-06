@@ -1,0 +1,160 @@
+"use client";
+
+import { useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { BOOK_VIEWS, bookView, groupByLevel, levelHeading, type BookView } from "@/lib/spellbook";
+import { useLocalStore } from "@/lib/localStore";
+import type { Spell } from "@/lib/spells";
+import { GripIcon } from "./icons";
+import SpellCard from "./SpellCard";
+import styles from "./SpellBook.module.css";
+
+interface Props {
+  spells: Spell[];
+  onReorder: (level: number, activeId: string, overId: string) => void;
+  onRemove: (index: string) => void;
+}
+
+interface ItemProps {
+  spell: Spell;
+  view: BookView;
+  arranging: boolean;
+  onRemove: (index: string) => void;
+}
+
+function SortableSpell({ spell, view, arranging, onRemove }: ItemProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: spell.index, disabled: !arranging });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${styles.item} ${isDragging ? styles.dragging : ""}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+    >
+      <SpellCard
+        spell={spell}
+        variant={view}
+        headingLevel={3}
+        handle={
+          arranging && (
+            <button
+              ref={setActivatorNodeRef}
+              className={styles.handle}
+              aria-label={`Reorder ${spell.name}`}
+              {...attributes}
+              {...listeners}
+            >
+              <GripIcon />
+            </button>
+          )
+        }
+        actions={
+          <button
+            className="btn"
+            aria-label={`Remove ${spell.name} from book`}
+            onClick={() => {
+              if (window.confirm(`Remove ${spell.name} from your spell book?`)) onRemove(spell.index);
+            }}
+          >
+            Remove
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
+export default function SpellBook({ spells, onReorder, onRemove }: Props) {
+  const [view, setView] = useLocalStore(bookView);
+  const [arranging, setArranging] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  if (spells.length === 0) {
+    return <p className={styles.empty}>Your spell book is empty. Search for a spell and add it to see it here.</p>;
+  }
+
+  function handleDragEnd(level: number, { active, over }: DragEndEvent) {
+    if (over && active.id !== over.id) onReorder(level, String(active.id), String(over.id));
+  }
+
+  return (
+    <div>
+      <div className={styles.toolbar}>
+        <div className={styles.segments} role="radiogroup" aria-label="Display style">
+          {BOOK_VIEWS.map((o) => (
+            <label key={o.value} className={styles.segment}>
+              <input
+                type="radio"
+                name="book-view"
+                value={o.value}
+                checked={view === o.value}
+                onChange={() => setView(o.value)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+        <button className="btn" aria-pressed={arranging} onClick={() => setArranging((a) => !a)}>
+          {arranging ? "Done arranging" : "Arrange"}
+        </button>
+      </div>
+      {arranging && (
+        <p className={styles.hint}>
+          Drag a spell by its grip handle to reorder it within its level. With the keyboard, focus the
+          handle, press Space, use the arrow keys, then Space again to drop.
+        </p>
+      )}
+
+      {groupByLevel(spells).map(({ level, spells: group }) => (
+        <section key={level} className={styles.level}>
+          <h2 className={styles.levelHeading}>
+            {levelHeading(level)} <span className={styles.count}>({group.length})</span>
+          </h2>
+          <DndContext
+            id={`level-${level}`}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(e) => handleDragEnd(level, e)}
+          >
+            <SortableContext
+              items={group.map((s) => s.index)}
+              strategy={view === "list" ? verticalListSortingStrategy : rectSortingStrategy}
+            >
+              <div className={`${styles.grid} ${styles[view]}`}>
+                {group.map((spell) => (
+                  <SortableSpell
+                    key={spell.index}
+                    spell={spell}
+                    view={view}
+                    arranging={arranging}
+                    onRemove={onRemove}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </section>
+      ))}
+    </div>
+  );
+}
