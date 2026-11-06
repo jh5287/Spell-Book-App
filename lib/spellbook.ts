@@ -97,3 +97,11 @@ export function groupSpells(spells: Spell[]): SpellGroup[] {
 export function levelHeading(level: number): string {
   return level === 0 ? "Cantrips" : `${ordinal(level)} Level`;
 }
+
+/** Swaps in an edited entry. It keeps its place, unless it moved to a different section: then it goes to the end of that one. */
+export function replaceInBook(spells: Spell[], updated: Spell): Spell[] {
+  const old = spells.find((s) => s.index === updated.index);
+  if (!old) return spells;
+  if (groupKey(old) !== groupKey(updated)) return [...spells.filter((s) => s !== old), updated];
+  return spells.map((s) => (s === old ? updated : s));
+}

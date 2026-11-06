@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useLocalStore } from "@/lib/localStore";
-import { addToBook, removeFromBook, reorderWithinGroup, spellBook } from "@/lib/spellbook";
+import { addToBook, removeFromBook, reorderWithinGroup, replaceInBook, spellBook } from "@/lib/spellbook";
 import type { Spell } from "@/lib/spells";
 import CustomSpellForm from "./CustomSpellForm";
 import { BookIcon, PlusIcon, SearchIcon } from "./icons";
@@ -23,7 +23,15 @@ export default function SpellApp() {
   const [saved, setSaved] = useLocalStore(spellBook);
   const savedIds = useMemo(() => new Set(saved.map((s) => s.index)), [saved]);
 
+  // the custom entry currently being edited in the Create tab, if any
+  const [editing, setEditing] = useState<Spell | null>(null);
+
   const addSpell = (s: Spell) => setSaved((prev) => addToBook(prev, s));
+
+  function finishEditing() {
+    setEditing(null);
+    setMode("book");
+  }
 
   const tabs: { mode: Mode; label: string; icon: ReactNode; badge?: number }[] = [
     { mode: "search", label: "Search", icon: <SearchIcon /> },
@@ -34,7 +42,7 @@ export default function SpellApp() {
   return (
     <main className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>{TITLES[mode]}</h1>
+        <h1 className={styles.title}>{mode === "create" && editing ? "Edit Entry" : TITLES[mode]}</h1>
         <nav className={styles.nav} aria-label="Sections">
           {tabs.map((t) => (
             <button
@@ -56,9 +64,24 @@ export default function SpellApp() {
       <div hidden={mode !== "search"}>
         <SpellSearch savedIds={savedIds} onAdd={addSpell} />
       </div>
-      <div hidden={mode !== "create"}>
+      <div hidden={mode !== "create" || !!editing}>
         <CustomSpellForm saved={saved} onAdd={addSpell} />
       </div>
+      {editing && (
+        <div hidden={mode !== "create"}>
+          <CustomSpellForm
+            key={editing.index}
+            saved={saved}
+            onAdd={addSpell}
+            editing={editing}
+            onSave={(updated) => {
+              setSaved((prev) => replaceInBook(prev, updated));
+              finishEditing();
+            }}
+            onCancel={finishEditing}
+          />
+        </div>
+      )}
       {mode === "book" && (
         <SpellBook
           spells={saved}
@@ -66,6 +89,10 @@ export default function SpellApp() {
             setSaved((prev) => reorderWithinGroup(prev, key, activeId, overId))
           }
           onRemove={(index) => setSaved((prev) => removeFromBook(prev, index))}
+          onEdit={(spell) => {
+            setEditing(spell);
+            setMode("create");
+          }}
         />
       )}
     </main>

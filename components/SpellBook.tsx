@@ -29,6 +29,7 @@ interface Props {
   spells: Spell[];
   onReorder: (groupKey: string, activeId: string, overId: string) => void;
   onRemove: (index: string) => void;
+  onEdit: (spell: Spell) => void;
 }
 
 interface ItemProps {
@@ -36,9 +37,10 @@ interface ItemProps {
   view: BookView;
   arranging: boolean;
   onRemove: (index: string) => void;
+  onEdit: (spell: Spell) => void;
 }
 
-function SortableSpell({ spell, view, arranging, onRemove }: ItemProps) {
+function SortableSpell({ spell, view, arranging, onRemove, onEdit }: ItemProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: spell.index, disabled: !arranging });
 
@@ -66,22 +68,29 @@ function SortableSpell({ spell, view, arranging, onRemove }: ItemProps) {
           )
         }
         actions={
-          <button
-            className="btn"
-            aria-label={`Remove ${spell.name} from book`}
-            onClick={() => {
-              if (window.confirm(`Remove ${spell.name} from your spell book?`)) onRemove(spell.index);
-            }}
-          >
-            Remove
-          </button>
+          <>
+            {spell.custom && (
+              <button className="btn" aria-label={`Edit ${spell.name}`} onClick={() => onEdit(spell)}>
+                Edit
+              </button>
+            )}
+            <button
+              className="btn"
+              aria-label={`Remove ${spell.name} from book`}
+              onClick={() => {
+                if (window.confirm(`Remove ${spell.name} from your spell book?`)) onRemove(spell.index);
+              }}
+            >
+              Remove
+            </button>
+          </>
         }
       />
     </div>
   );
 }
 
-export default function SpellBook({ spells, onReorder, onRemove }: Props) {
+export default function SpellBook({ spells, onReorder, onRemove, onEdit }: Props) {
   const [view, setView] = useLocalStore(bookView);
   const [arranging, setArranging] = useState(false);
   const sensors = useSensors(
@@ -148,6 +157,7 @@ export default function SpellBook({ spells, onReorder, onRemove }: Props) {
                     view={view}
                     arranging={arranging}
                     onRemove={onRemove}
+                    onEdit={onEdit}
                   />
                 ))}
               </div>

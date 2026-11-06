@@ -7,6 +7,7 @@ import {
   LIMITS,
   draftToSpell,
   isSpellKind,
+  spellToDraft,
   validateDraft,
   type Draft,
   type Errors,
@@ -17,6 +18,10 @@ import styles from "./CustomSpellForm.module.css";
 interface Props {
   saved: Spell[];
   onAdd: (spell: Spell) => void;
+  /** When set, the form edits this entry instead of creating a new one. */
+  editing?: Spell;
+  onSave?: (spell: Spell) => void;
+  onCancel?: () => void;
 }
 
 // Suggestions only (via <datalist>): every one of these fields still accepts free text.
@@ -50,16 +55,16 @@ function Field({ id, label, error, required, hint, children }: FieldProps) {
   );
 }
 
-export default function CustomSpellForm({ saved, onAdd }: Props) {
+export default function CustomSpellForm({ saved, onAdd, editing, onSave, onCancel }: Props) {
   const uid = useId();
   const fieldId = (name: string) => `${uid}-${name}`;
 
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<Draft>(() => (editing ? spellToDraft(editing) : EMPTY_DRAFT));
   const [submitted, setSubmitted] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
 
   // Errors only appear after the first "Add" attempt, then update live as the user fixes them.
-  const errors: Errors = submitted ? validateDraft(draft, saved) : {};
+  const errors: Errors = submitted ? validateDraft(draft, saved, editing?.index) : {};
   const errorCount = Object.keys(errors).length;
   const isSpell = isSpellKind(draft.kind);
 
@@ -71,10 +76,14 @@ export default function CustomSpellForm({ saved, onAdd }: Props) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitted(true);
-    const found = validateDraft(draft, saved);
+    const found = validateDraft(draft, saved, editing?.index);
     const first = ERROR_ORDER.find((k) => found[k]);
     if (first) {
       document.getElementById(fieldId(first))?.focus();
+      return;
+    }
+    if (editing) {
+      onSave?.(draftToSpell(draft, editing.index));
       return;
     }
     onAdd(draftToSpell(draft));
@@ -87,11 +96,17 @@ export default function CustomSpellForm({ saved, onAdd }: Props) {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {editing ? (
+        <p className={styles.intro}>
+          Editing <strong>{editing.name}</strong>. Your changes replace the saved version in your book.
+        </p>
+      ) : (
       <p className={styles.intro}>
         Make your own spell, or add something else you want in your book, like a class ability or an
         item&apos;s power. Only the <strong>name</strong>, <strong>type</strong> and{" "}
         <strong>description</strong> are required{isSpell ? ", plus a level for spells" : ""}.
       </p>
+      )}
 
       <p role="status" className={styles.status}>{added && `Added ${added} to your book.`}</p>
       {errorCount > 0 && (
@@ -284,18 +299,22 @@ export default function CustomSpellForm({ saved, onAdd }: Props) {
       )}
 
       <div className={styles.actions}>
-        <button type="submit" className="btn btn-primary">Add to book</button>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            setDraft(EMPTY_DRAFT);
-            setSubmitted(false);
-            setAdded(null);
-          }}
-        >
-          Clear form
-        </button>
+        <button type="submit" className="btn btn-primary">{editing ? "Save changes" : "Add to book"}</button>
+        {editing ? (
+          <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+        ) : (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setDraft(EMPTY_DRAFT);
+              setSubmitted(false);
+              setAdded(null);
+            }}
+          >
+            Clear form
+          </button>
+        )}
       </div>
     </form>
   );

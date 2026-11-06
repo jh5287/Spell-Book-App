@@ -62,7 +62,8 @@ function normalizedKind(kind: string): string {
   return isSpellKind(kind) ? "" : kind.trim().toLowerCase();
 }
 
-export function validateDraft(draft: Draft, existing: Spell[]): Errors {
+/** `ignoreIndex` skips the entry being edited so it doesn't count as its own duplicate. */
+export function validateDraft(draft: Draft, existing: Spell[], ignoreIndex?: string): Errors {
   const errors: Errors = {};
   const name = draft.name.trim();
   const kind = draft.kind.trim();
@@ -71,7 +72,10 @@ export function validateDraft(draft: Draft, existing: Spell[]): Errors {
   else if (name.length > LIMITS.name) errors.name = `Name is too long (max ${LIMITS.name} characters).`;
   else if (
     existing.some(
-      (s) => s.name.trim().toLowerCase() === name.toLowerCase() && (s.kind ?? "").toLowerCase() === normalizedKind(kind),
+      (s) =>
+        s.index !== ignoreIndex &&
+        s.name.trim().toLowerCase() === name.toLowerCase() &&
+        (s.kind ?? "").toLowerCase() === normalizedKind(kind),
     )
   ) {
     errors.name = `You already have “${name}” in your book. Rename it or remove the old one first.`;
@@ -106,14 +110,14 @@ function capitalize(s: string): string {
 }
 
 /** Turns a validated draft into a book entry. Spell-only fields are dropped for other types. */
-export function draftToSpell(draft: Draft): Spell {
+export function draftToSpell(draft: Draft, index: string = newIndex()): Spell {
   const kind = draft.kind.trim();
   const isSpell = isSpellKind(kind);
   const short = (s: string) => s.trim().slice(0, LIMITS.short);
   const material = isSpell && draft.material ? draft.materialText.trim().slice(0, LIMITS.material) : "";
 
   return {
-    index: newIndex(),
+    index,
     name: draft.name.trim().slice(0, LIMITS.name),
     level: isSpell ? Number(draft.level) : 0,
     ...(isSpell ? {} : { kind: capitalize(kind.slice(0, LIMITS.kind)) }),
@@ -137,5 +141,27 @@ export function draftToSpell(draft: Draft): Spell {
       .map((c) => c.trim().slice(0, LIMITS.short))
       .filter(Boolean)
       .map((name) => ({ name })),
+  };
+}
+
+/** The reverse of `draftToSpell`, used to prefill the form when editing. */
+export function spellToDraft(spell: Spell): Draft {
+  return {
+    name: spell.name,
+    kind: spell.kind ?? "Spell",
+    level: spell.kind ? "" : String(spell.level),
+    school: spell.school.name,
+    castingTime: spell.casting_time,
+    range: spell.range,
+    duration: spell.duration,
+    concentration: spell.concentration,
+    ritual: spell.ritual,
+    verbal: spell.components.includes("V"),
+    somatic: spell.components.includes("S"),
+    material: spell.components.includes("M"),
+    materialText: spell.material ?? "",
+    classes: spell.classes.map((c) => c.name).join(", "),
+    description: spell.description,
+    higherLevel: spell.higher_level ?? "",
   };
 }
